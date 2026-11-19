@@ -269,7 +269,7 @@ export function missMessage(result: ModelResult | null, errorMessage?: string): 
   return "No valid session name was generated.";
 }
 
-type RunOptions = { force?: boolean; hint?: string; manual?: boolean };
+type RunOptions = { force?: boolean; hint?: string; manual?: boolean; git?: string };
 
 function promptFor(state: State, contextLine: string, conversation: string, config: Config, options: RunOptions = {}): string {
   const wantsProgress = config.nameFormat.includes("{progress}");
@@ -279,9 +279,9 @@ function promptFor(state: State, contextLine: string, conversation: string, conf
   const outputRule = buildOutputRule(Boolean(options.manual), wantsProgress);
   const reuseRule = buildReuseRule(Boolean(options.force), wantsProgress);
   const progressRules = wantsProgress
-    ? `\n- Progress states the latest status of the main task (e.g. "published 0.1.1", "fix verified", "待审查"), at most 16 characters. Anchor it to the latest evidence near the END of the conversation; never report an earlier phase when a later milestone has already been reached.`
+    ? `\n- Progress states the latest status of the main task (e.g. "published 0.1.1", "fix verified", "待审查"), at most 16 characters. Anchor it to the latest evidence near the END of the conversation; never report an earlier phase when a later milestone has already been reached. When <git-status> is present, progress should say whether the work is uncommitted, committed or pushed.`
     : "";
-  return `You are Pi's session naming assistant. Describe what this session is working on and its latest state.\n\nOutput rules:\n${outputRule}\n${reuseRule}\n- Type must be one of: ${config.types.join(", ")}, or an equivalent label in the naming language.\n- Topic is concise and specific, suitable for a sidebar.\n${languageRule}\n- No project name, file paths, dates, explanations, quotes, or Markdown.${progressRules}\n- The program will apply the date and the name format: ${config.nameFormat}.${buildHintRule(options.hint)}\n\n${contextLine}\n\n<conversation>\n${conversation}\n</conversation>`;
+  return `You are Pi's session naming assistant. Describe what this session is working on and its latest state.\n\nOutput rules:\n${outputRule}\n${reuseRule}\n- Type must be one of: ${config.types.join(", ")}, or an equivalent label in the naming language.\n- Topic is concise and specific, suitable for a sidebar.\n${languageRule}\n- No project name, file paths, dates, explanations, quotes, or Markdown.${progressRules}\n- The program will apply the date and the name format: ${config.nameFormat}.${buildHintRule(options.hint)}\n\n${contextLine}\n\n<conversation>\n${conversation}\n</conversation>${options.git ? `\n\n<git-status>\n${options.git}\n</git-status>` : ""}`;
 }
 
 function thinkingOptions(model: { api: string; reasoning: boolean; thinkingLevelMap?: Partial<Record<string, string | null>> }, level: ThinkingLevel): Record<string, unknown> {
@@ -310,8 +310,9 @@ async function generate(pi: ExtensionAPI, ctx: ExtensionContext, config: Config,
   if (!conversation) return { result: "NO_CONTEXT" };
   const configuredLevel = config.thinkingLevel === "inherit" ? (ctx.thinkingLevel ?? "off") : config.thinkingLevel;
   const requestOptions = { sessionId: uuidv7(), cacheRetention: "none" as const, ...thinkingOptions(model, configuredLevel) };
+  const git = await pi.exec("git", ["status", "-sb"], { cwd: ctx.cwd, timeout: 5000 }).then((result) => result.stdout.trim(), () => "");
   const contextLine = buildContextLine(Boolean(options.force), state.segments, pi.getSessionName() ?? state.autoName ?? "(unnamed)");
-  const response = await ctx.modelRegistry.complete(model, { messages: [{ role: "user", content: [{ type: "text", text: promptFor(state, contextLine, conversation, config, options) }], timestamp: Date.now() }] }, requestOptions as never);
+  const response = await ctx.modelRegistry.complete(model, { messages: [{ role: "user", content: [{ type: "text", text: promptFor(state, contextLine, conversation, config, { ...options, git }) }], timestamp: Date.now() }] }, requestOptions as never);
   const failure = responseError(response);
   if (failure) return { result: "ERROR", errorMessage: failure };
   const text = response.content.filter((part): part is { type: "text"; text: string } => part.type === "text").map((part) => part.text).join("\n");
@@ -323,6 +324,7 @@ export default function sessionNamer(pi: ExtensionAPI) {
   let state: State | undefined;
   let running = false;
   let compactPending = false;
+  let gitActivity = false;
   let internalNameChange = false;
   let attempts = 0;
   let turns = 0;
@@ -402,6 +404,10 @@ export default function sessionNamer(pi: ExtensionAPI) {
     }
   });
   pi.on("session_compact", () => { compactPending = true; });
+  // A commit or push changes what progress should say, so check as soon as the agent settles.
+  pi.on("tool_result", (event) => {
+    if (event.toolName === "bash" && !event.isError && /\bgit\s+(commit|push)\b/.test(String((event.input as { command?: string }).command))) gitActivity = true;
+  });
   pi.on("session_info_changed", (event, ctx) => {
     if (internalNameChange) { internalNameChange = false; return; }
     const current = ensureState(ctx);
@@ -415,8 +421,9 @@ export default function sessionNamer(pi: ExtensionAPI) {
     if (current.manualLock) return;
     turns++;
     const isCompact = compactPending;
-    if (isCompact || !current.autoName || (config.checkEveryTurns > 0 && turns >= config.checkEveryTurns)) {
+    if (isCompact || gitActivity || !current.autoName || (config.checkEveryTurns > 0 && turns >= config.checkEveryTurns)) {
       compactPending = false;
+      gitActivity = false;
       await run(ctx, isCompact ? "compact" : current.autoName ? "periodic" : "initial");
     } else persist({ ...current, turnsSinceCheck: turns });
   });

@@ -27,6 +27,7 @@ function createHarness() {
   let sessionName: string | undefined;
   let branch: unknown[] = MESSAGE_ENTRY;
   let reply: Reply = "OK";
+  const prompts: string[] = [];
   const handled = new Map<string, (event: unknown, ctx: unknown) => Promise<void>>();
   const model = { provider: "probe", id: "probe", api: "openai-completions", reasoning: false };
   const ctx = {
@@ -42,7 +43,7 @@ function createHarness() {
     modelRegistry: {
       find: () => model,
       hasConfiguredAuth: () => true,
-      complete: async () => REPLIES[reply],
+      complete: async (_model: unknown, request: unknown) => { prompts.push(JSON.stringify(request)); return REPLIES[reply]; },
     },
     thinkingLevel: "off",
   };
@@ -50,6 +51,7 @@ function createHarness() {
     on: (event: string, handler: (event: unknown, ctx: unknown) => Promise<void>) => handled.set(event, handler),
     registerCommand: () => {},
     appendEntry: () => {},
+    exec: async () => ({ stdout: "## main...origin/main [ahead 1]" }),
     getSessionName: () => sessionName,
     setSessionName: (name: string) => { sessionName = name; },
   } as never);
@@ -59,6 +61,8 @@ function createHarness() {
       branch = withContext ? MESSAGE_ENTRY : [];
       await handled.get("agent_settled")!({}, ctx);
     },
+    prompts,
+    async gitPush() { await handled.get("tool_result")!({ toolName: "bash", isError: false, input: { command: "git push origin main" } }, ctx); },
     setReply(next: Reply) { reply = next; },
     name: () => sessionName,
   };
@@ -94,4 +98,17 @@ test("three real model failures stop automatic naming until a manual refresh", a
   await harness.settle(true);
 
   assert.equal(harness.name(), undefined, "a broken model must not be retried forever");
+});
+
+test("a git push triggers a check before the interval and sends the git status", async () => {
+  const harness = createHarness();
+  await harness.settle(true);
+  await harness.settle(true);
+  assert.equal(harness.prompts.length, 1, "no check between intervals without git activity");
+
+  await harness.gitPush();
+  await harness.settle(true);
+
+  assert.equal(harness.prompts.length, 2);
+  assert.match(harness.prompts[1], /ahead 1/);
 });
