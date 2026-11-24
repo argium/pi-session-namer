@@ -6,6 +6,9 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

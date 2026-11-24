@@ -2,17 +2,6 @@
   "name": "pi-session-namer",
   "version": "0.3.3",
   "description": "Automatically name and update Pi sessions from the current conversation",
-  "type": "module",
-  "license": "MIT",
-  "author": "Joshua Zeng",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/joshua-zyy/pi-session-namer.git"
-  },
-  "bugs": {
-    "url": "https://github.com/joshua-zyy/pi-session-namer/issues"
-  },
-  "homepage": "https://github.com/joshua-zyy/pi-session-namer#readme",
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -20,34 +9,44 @@
     "session",
     "naming"
   ],
-  "engines": {
-    "node": ">=20"
+  "homepage": "https://github.com/joshua-zyy/pi-session-namer#readme",
+  "bugs": {
+    "url": "https://github.com/joshua-zyy/pi-session-namer/issues"
   },
-  "pi": {
-    "extensions": [
-      "./src/index.ts"
-    ]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joshua-zyy/pi-session-namer.git"
   },
+  "license": "MIT",
+  "author": "Joshua Zeng",
+  "type": "module",
   "files": [
-    "src/index.ts",
+    "src",
     "session-namer.example.json",
     "README.md",
-    "README.zh-CN.md",
     "LICENSE",
     "package.json"
   ],
   "scripts": {
-    "test": "tsc --outDir .tmp-test --noEmit false && node --test .tmp-test/test/*.test.js"
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.6.0",
+    "@earendil-works/pi-coding-agent": "1.6.0",
+    "@types/node": "26.6.7",
+    "typescript": "7.0.2"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*"
   },
-  "devDependencies": {
-    "@earendil-works/pi-ai": "^0.84.4",
-    "@earendil-works/pi-coding-agent": "^0.84.4",
-    "@types/node": "^26.4.1",
-    "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
   }
 }

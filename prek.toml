@@ -1,0 +1,63 @@
+# Repository lint. `just lint` runs these hooks with prek; `just hooks` installs them as a
+# git pre-commit hook. The fixers write files in place, so CI follows the run with
+# `git diff --exit-code`.
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace", args = ["--markdown-linebreak-ext=md"] },
+  { id = "end-of-file-fixer" },
+  { id = "fix-byte-order-marker" },
+  { id = "mixed-line-ending", args = ["--fix=lf"] },
+  { id = "check-merge-conflict", args = ["--assume-in-merge"] },
+  { id = "check-json" },
+  { id = "check-toml" },
+  { id = "check-yaml" },
+]
+
+[[repos]]
+repo = "https://github.com/editorconfig-checker/editorconfig-checker.python"
+rev = "e8b4e28241a9ae8296ba6e4a491b5da4eda73283" # 3.11.1
+hooks = [
+  # Markdown is formatted by dprint. Indentation belongs to the formatters.
+  { id = "editorconfig-checker", args = ["-disable-indentation", "-disable-indent-size"], exclude = '\.md$' },
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "dprint"
+name = "dprint"
+language = "system"
+entry = "dprint fmt --allow-no-files"
+files = '\.(md|jsonc?|ya?ml|[cm]?js|ts)$'
+
+[[repos.hooks]]
+id = "typecheck"
+name = "tsc"
+language = "system"
+entry = "npm run --silent typecheck"
+files = '(\.ts|tsconfig\.json|package\.json)$'
+pass_filenames = false
+
+# The git pre-commit hook scans only what is staged. `just lint` runs the manual stage,
+# which holds every hook without a `stages` setting plus gitleaks-dir, which scans the
+# whole working tree (including untracked files) and takes no filenames.
+[[repos.hooks]]
+id = "gitleaks"
+name = "gitleaks (staged)"
+language = "system"
+entry = "gitleaks git --staged --no-banner --redact"
+stages = ["pre-commit"]
+pass_filenames = false
+always_run = true
+
+[[repos.hooks]]
+id = "gitleaks-dir"
+name = "gitleaks (working tree)"
+language = "system"
+entry = "gitleaks dir . --no-banner --redact"
+stages = ["manual"]
+pass_filenames = false
+always_run = true

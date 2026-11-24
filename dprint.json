@@ -1,0 +1,39 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "lineWidth": 90,
+  "indentWidth": 2,
+  "useTabs": false,
+  "newLineKind": "lf",
+  "includes": [
+    "**/*.{md,json,jsonc,yml,yaml,js,mjs,cjs,ts}"
+  ],
+  "excludes": [
+    "node_modules",
+    "package-lock.json"
+  ],
+  "markdown": {
+    "textWrap": "always",
+    "wrapCodeSpans": false,
+    "codeBlock.skipFormat": true,
+    "codeBlock.preserveBlankLines": true,
+    "codeBlock.preserveIndentation": true
+  },
+  "typescript": {
+    "semicolons": "always",
+    "quoteStyle": "alwaysSingle",
+    "quoteProps": "asNeeded",
+    "trailingCommas": "onlyMultiLine",
+    "operatorPosition": "maintain",
+    "useBraces": "maintain",
+    "arrowFunction.useParentheses": "force"
+  },
+  "yaml": {
+    "quotes": "preferSingle"
+  },
+  "plugins": [
+    "https://github.com/dprint/dprint-plugin-markdown/releases/download/0.29.0/plugin.wasm@714aea7555dd9831861be466da8b26b2d92316d3cde550ef3e1f63b31f4ea302",
+    "https://github.com/dprint/dprint-plugin-json/releases/download/0.26.0/plugin.wasm@9abcd6eb43b3d04655649090c2e7ad14948da6acfe0374cb47ccd9eb3c48903d",
+    "https://github.com/dprint/dprint-plugin-typescript/releases/download/0.101.0/plugin.wasm@4401b6e344db92a5e661a05958267d4b3068fa82c89067e9e8ffe849798644f4",
+    "https://github.com/g-plane/pretty_yaml/releases/download/v0.6.0/plugin.wasm@40a2fdda7040317eb1b23520f3a00769a5571eedb049c4ca9175c1b9eeba01ae"
+  ]
+}

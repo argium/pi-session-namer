@@ -1,0 +1,8 @@
+[tools]
+just = "1.59.0"
+prek = "0.5.11"
+dprint = "0.65.0"
+gitleaks = "8.30.1"
+
+[settings]
+lockfile_platforms = ["linux-x64", "macos-arm64", "windows-x64"]
